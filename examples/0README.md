@@ -1,4 +1,4 @@
-These are the results from a 6.3 μs folding simulation of the CLN025 peptide using the AMBER-99SB-ILDN force field. 
+The GT_* files contain the results from a 6.3 μs folding simulation of the CLN025 peptide using the AMBER-99SB-ILDN force field. 
 
 The graphs are in the PDF files (as produced by R). 
 
