@@ -61,6 +61,15 @@ if ( ! -w "." )
         exit;
     }
 
+$log = `carma`;
+if ( $log !~ /carma v\.2\.5/ )
+    {
+        print colored(['bold red'], "\nCarma version 2.5 not present. Abort.\n\n");
+        exit;
+    }
+
+
+
 
 #
 # Get number of frames in the trajectory 
