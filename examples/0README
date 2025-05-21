@@ -3,7 +3,7 @@ using the AMBER-99SB-ILDN force field.
 
 The graphs are in the PDF files (as produced by R). 
 
-The file 'Screenshot.png' is the log produced on the interactive shell.
+The file 'GT_Screenshot.png' is the log produced on the interactive shell.
 
 The file 'Comparison.png' illustrates the form of the results for folding
 simulations of different peptides/proteins (and with different simulations 
