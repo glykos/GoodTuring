@@ -1,1 +1,329 @@
+#!/usr/bin/perl
+
+###############################################################################
+#
+# This is a variation of the Good-Turing application to molecular dynamics
+# trejectories reported in : Koukos, P.I. & Glykos*, N.M. (2014), "On the
+# application of Good-Turing statistics to quantify convergence of biomolecular
+# simulations", J. Chem. Inf. Model., 54, 209-217. 
+#
+# It attempts to bypass the significant memory limitations of the original
+# algorithm by avoiding the calculation of the whole RMSD distance matrix. The
+# principal idea is that instead of calculating and storing in memory the whole
+# matrix (and then preparing a dendrogram), we calculate and keep for each row
+# of the matrix only the highest RMSD observed, and we then assume that this
+# largest RMSD would correspond to single-membered group of structures (and can
+# thus be used to calculate the Good-Turing probability). 
+#
+# The initial part of script calculates successive superdiagonals of the matrix
+# which then uses to estimate the sampling step needed to obtain 'independent'
+# structures. The treatment is essentialy identical with the originally
+# reported procedure.
+#
+###############################################################################
+
+
+use Term::ANSIColor;
+
+$time0 = time();
+
+#
+# Arguments and sanity checks
+#
+
+( @ARGV == 2 ) or die "Usage : GT_new <DCD> <PSF>\n";
+
+if ( $ARGV[0] =~ /\.psf/ && $ARGV[1] =~ /\.dcd/ )
+    {
+        $PSF = $ARGV[0];
+        $DCD = $ARGV[1];
+    }
+elsif ( $ARGV[0] =~ /\.dcd/ && $ARGV[1] =~ /\.psf/ )
+    {
+        $PSF = $ARGV[1];
+        $DCD = $ARGV[0];
+    }
+else
+    {
+        print colored(['bold red'], "Usage : GT_new <DCD> <PSF>\n");
+        exit;
+    }
+
+if ( !( -f $PSF) || !( -f $DCD) )
+    {
+        print colored(['bold red'], "Missing DCD/PSF !? Abort.\n");
+        exit;
+    }
+
+if ( ! -w "." ) 
+    {
+        print colored(['bold red'], "No write access to current directory !? Abort.\n");
+        exit;
+    }
+
+
+#
+# Get number of frames in the trajectory 
+#
+
+$log = `carma -v -last 1 $DCD $PSF`;
+`rm -rf *.0000001.ps`;
+if ( $log =~ /Number of coordinate sets is (\d+)/ )
+    {
+        $nof_frames = $1;
+    }
+else
+    {
+        print colored(['bold red'], "Can not determine number of frames ?!? Is carma installed ? Abort.\n");
+        exit;
+    }
+print "\nTrajectory contains $nof_frames frames.\n";
+
+
+
+#
+# Prepare the maxima of successive superdiagonals for 
+# different values of "-first". 
+#       ▶ The "-step" is fixed to 400 (for now).
+#       ▶ The number of superdiagonals is fixed to 150 (for now). 
+#
+
+if ( -f "diagonals.dat" )
+{
+    print colored(['bold bright_yellow'], "____________________________________________________________________\n\n");
+    print colored(['bold bright_yellow'], "  Beware : File diagonals.dat already present. We will re-use it!   \n");
+    print colored(['bold bright_yellow'], "____________________________________________________________________\n\n");
+    sleep( 2 );
+}
+else
+{
+    `rm -rf diagonals.dat ; touch diagonals.dat`;
+    print colored(['bold ansi208'], "Calculating superdiagonals : ");
+    for ( $first = 1 ; $first < 400 ; $first += 20 )
+    {
+        print ".";
+
+        `carma -fit -cross -mm -diag 150 -first $first -step 400 $DCD $PSF`;
+
+        `rm -rf .inter.dat`;
+        
+        for ( $diag = 1 ; $diag <= 150 ; $diag++ )
+        {
+            `awk '{print \$'$diag'}' carma.RMSD.superdiagonals | sort -n | tail -1 >> .inter.dat`;
+        }
+
+        `paste diagonals.dat .inter.dat > .inter2.dat ; mv .inter2.dat diagonals.dat ; rm -rf .inter.dat`;
+    }
+
+    `tail -n +2 diagonals.dat > .inter.dat ; mv .inter.dat diagonals.dat ; rm -rf carma.RMSD.superdiagonals`;
+    
+    print "............. Done.\n";
+}
+
+
+
+#
+# Prepare R script
+#
+#
+`rm -rf Rscript.R`;
+
+open(FOUT,"> Rscript.R") or die "Can not open Rscript.R for writing. Abort.\n";
+
+print FOUT <<EOT;
+library(dpseg)
+library(minpack.lm)
+testdata <- read.table("diagonals.dat")
+color<-rainbow(ncol(testdata))
+plot.ts( testdata, plot.type="single",col=color)
+x <- 1:nrow(testdata)
+y <- rowMeans( testdata )
+dy <- apply(X = testdata, MARGIN = 1, FUN = sd)
+plot( x, y, col='red' )
+arrows(x,y-dy,x,y+dy, code=3, col='gray50', length=0.02, angle = 90)
+
+fit_nls <- nlsLM(y ~ I(x + a2) * I((1 + abs((x + a2) / a0) ^ a1)^(-1/a1)),
+            control = nls.lm.control(ftol = 1e-10, ptol = 1e-10, maxiter=1000),
+            start=list(a0=1, a1=1, a2=1), weights=I(1 / (dy*dy) ))
+summary( fit_nls )
+
+fit_nls <- nlsLM(y ~ I(x + a2) * I((1 + abs((x + a2) / a0) ^ a1)^(-a3/a1)),
+            control = nls.lm.control(ftol = 1e-10, ptol = 1e-10, maxiter=1000),
+            start=list(a0=1, a1=1, a2=1, a3=1), weights=I(1 / (dy*dy) ))
+summary( fit_nls )
+new_df = predict(fit_nls, testdata)
+lines( new_df, lwd = 4 )
+
+segs <- dpseg(x = x, y = y, minl = 3, jumps = TRUE, P=0.00020 )
+segs
+plot( segs )
+EOT
+
+close( FOUT );  
+
+
+#
+# Run R
+#
+
+print colored(['bold ansi208'], "Running R :");
+$output = `Rscript Rscript.R`;
+print " .................................................. Done.\n";
+print colored(['bold ansi208'], "Output from R is :\n");
+
+print color('ansi244');
+print "$output\n";
+print color('reset');
+
+`mv Rplots.pdf GT_sampling.pdf`;
+
+#
+#
+# Start interpreting output ...
+#
+#
+
+#
+# Is the a3 parameter greater than 0.98 ?
+#
+
+if ( $output =~ /\na3\s+(\S+)\s/ )
+{
+    $a3 = $1;
+    if ( $a3 > 0.980 )
+    {
+        print colored(['bold ansi208'], "Check convergence : ........................................... Pass\n");
+    }
+    else
+    {
+        print colored(['bold red'], "Check convergence : ................................... Questionable\n");
+    }
+}
+else
+{
+    print colored(['bold red'], "Can not parse R output ?! Abort.\n");
+    exit;
+}
+
+
+#
+#
+# Get the table with segments
+#
+#
+
+if ( $output =~ /\s+var\n((.*\s*)+)\nParameters:\s/ )
+{
+    $table = $1;
+}
+else
+{
+    print colored(['bold red'], "Can not parse R output ?! Abort.\n");
+    exit;
+}
+
+$maxlen = 0;
+while( $table =~ /\s*\d+\s+\d+\s+\d+\s+(\d+)\s+(\d+)\s+(\S+)\s+(\S+).*/ )
+{
+    if ( $2-$1 > $maxlen )
+    {
+        $lim1 = $1;
+        $lim2 = $2;
+        $intercept = $3;
+        $slope = $4;
+        $maxlen = $2-$1;
+    }
+    $table = $';
+}
+
+if ( ($slope / $intercept) > 0.0010 )
+{
+    $STEP = $lim2;
+}
+else
+{
+    $STEP = $lim1;
+}
+
+$STEP *= 400;
+
+
+print color('bold ansi208');
+print "Determine STEP size ....................................... ";
+printf ("%8d\n", $STEP);
+print color('reset');
+
+
+
+
+#
+#
+# Run the GT estimation using max-of-mins
+#
+#
+
+print color('bold ansi208');
+print "Good Turing : ";
+`rm -rf .out.dat`;
+$pr = 1;
+for ( $first = 1 ; $first < $STEP ; $first += $STEP/80 )
+{
+    if ( $pr == 1 )
+        {
+            print ".";
+            $pr = 0;
+        }
+    else
+        {
+            $pr = 1;
+        }
+
+    `carma -v -fit -cross -mm -first $first -step $STEP $DCD $PSF`;
+
+    
+    $lines = `wc -l < carma.RMSD.mins`;
+    chomp( $lines );
+    
+    `sort -n carma.RMSD.mins | awk '{print \$1, 1.0-NR/'$lines'}' >> .out.dat`;
+
+}
+
+`mv .out.dat GT_results.dat`;
+`rm carma.RMSD.mins`;
+
+print "......... Done\n";
+print color('reset');
+
+
+
+`rm -rf Rscript.R`;
+
+open(FOUT,"> Rscript.R") or die "Can not open Rscript.R for writing. Abort.\n";
+
+print FOUT <<EOT;
+testdata <- read.table("GT_results.dat")
+plot.ts( testdata\$V1, testdata\$V2, plot.type="single", xlab="RMSD in Angstrom", ylab="Probability", pch=".")
+smoothingSpline = smooth.spline(testdata\$V1, testdata\$V2, spar=0.5)
+plot.ts( testdata\$V1, testdata\$V2, plot.type="single", xlab="RMSD in Angstrom", ylab="Probability", pch=".")
+lines(smoothingSpline, col='red', lwd=4)
+EOT
+
+close( FOUT );  
+
+
+
+#
+# Run R to prepare the graphs
+#
+
+$output = `Rscript Rscript.R`;
+`mv Rplots.pdf GT_results.pdf`;
+`rm Rscript.R`;
+
+$time1 = time();
+$dt = ($time1-$time0) / 60.0;
+print color('bold ansi46');
+printf ("\nAll done in %3.1f minutes.\n", $dt );
+print color('reset');
+
 
