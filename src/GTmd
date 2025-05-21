@@ -144,11 +144,11 @@ library(dpseg)
 library(minpack.lm)
 testdata <- read.table("diagonals.dat")
 color<-rainbow(ncol(testdata))
-plot.ts( testdata, plot.type="single",col=color)
+plot.ts( testdata, plot.type="single",col=color, xlab="Superdiagonals (in steps of 400 structures)", ylab="max RMSDs")
 x <- 1:nrow(testdata)
 y <- rowMeans( testdata )
 dy <- apply(X = testdata, MARGIN = 1, FUN = sd)
-plot( x, y, col='red' )
+plot( x, y, col='red', xlab="Superdiagonals (in steps of 400 structures)", ylab="Mean & standard deviation of RMSDs")
 arrows(x,y-dy,x,y+dy, code=3, col='gray50', length=0.02, angle = 90)
 
 fit_nls <- nlsLM(y ~ I(x + a2) * I((1 + abs((x + a2) / a0) ^ a1)^(-1/a1)),
@@ -165,7 +165,7 @@ lines( new_df, lwd = 4 )
 
 segs <- dpseg(x = x, y = y, minl = 3, jumps = TRUE, P=0.00020 )
 segs
-plot( segs )
+plot( segs, main="Segments identified", xlab="Superdiagonals (in steps of 400 structures)", ylab="RMSDs")
 EOT
 
 close( FOUT );  
