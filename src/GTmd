@@ -86,7 +86,14 @@ else
         print colored(['bold red'], "Can not determine number of frames ?!? Is carma installed ? Abort.\n");
         exit;
     }
-print "\nTrajectory contains $nof_frames frames.\n";
+if ( $nof_frames < 200000 )
+{
+    print colored(['bold yellow'], "\nOnly $nof_frames frames found in the trajectory ?! Be sceptical ...\n");
+}
+else
+{
+    print "\nTrajectory contains $nof_frames frames.\n";
+}
 
 
 
@@ -245,6 +252,124 @@ while( $table =~ /\s*\d+\s+\d+\s+\d+\s+(\d+)\s+(\d+)\s+(\S+)\s+(\S+).*/ )
     $table = $';
 }
 
+
+
+
+
+if ( $maxlen > 140 )
+{
+
+    print colored(['bold ansi33'], "Segmentation is questionable. Re-running R .................... Done\n");
+
+    `rm -rf Rscript.R`;
+
+    open(FOUT,"> Rscript.R") or die "Can not open Rscript.R for writing. Abort.\n";
+
+print FOUT <<EOT;
+library(dpseg)
+library(minpack.lm)
+testdata <- read.table("diagonals.dat")
+color<-rainbow(ncol(testdata))
+plot.ts( testdata, plot.type="single",col=color, xlab="Superdiagonals (in steps of 400 structures)", ylab="max RMSDs")
+x <- 1:nrow(testdata)
+y <- rowMeans( testdata )
+dy <- apply(X = testdata, MARGIN = 1, FUN = sd)
+plot( x, y, col='red', xlab="Superdiagonals (in steps of 400 structures)", ylab="Mean & standard deviation of RMSDs")
+arrows(x,y-dy,x,y+dy, code=3, col='gray50', length=0.02, angle = 90)
+
+fit_nls <- nlsLM(y ~ I(x + a2) * I((1 + abs((x + a2) / a0) ^ a1)^(-1/a1)),
+            control = nls.lm.control(ftol = 1e-10, ptol = 1e-10, maxiter=1000),
+            start=list(a0=1, a1=1, a2=1), weights=I(1 / (dy*dy) ))
+summary( fit_nls )
+
+fit_nls <- nlsLM(y ~ I(x + a2) * I((1 + abs((x + a2) / a0) ^ a1)^(-a3/a1)),
+            control = nls.lm.control(ftol = 1e-10, ptol = 1e-10, maxiter=1000),
+            start=list(a0=1, a1=1, a2=1, a3=1), weights=I(1 / (dy*dy) ))
+summary( fit_nls )
+new_df = predict(fit_nls, testdata)
+lines( new_df, lwd = 4 )
+
+segs <- dpseg(x = x, y = y, minl = 3, maxl=50, jumps = TRUE, P=0.00020 )
+segs
+plot( segs, main="Segments identified", xlab="Superdiagonals (in steps of 400 structures)", ylab="RMSDs")
+EOT
+
+    close( FOUT );  
+
+
+    #
+    # Run R
+    #
+
+    $output = `Rscript Rscript.R`;
+
+    `mv Rplots.pdf GT_sampling_2.pdf`;
+
+    #
+    #
+    # Start interpreting output ...
+    #
+    #
+
+    #
+    # Is the a3 parameter greater than 0.98 ?
+    #
+
+    if ( $output =~ /\na3\s+(\S+)\s/ )
+    {
+        $a3 = $1;
+        if ( $a3 > 0.980 )
+        {
+            print colored(['bold ansi208'], "Check convergence : ........................................... Pass\n");
+        }
+        else
+        {
+            print colored(['bold red'], "Check convergence : ................................... Questionable\n");
+        }
+    }
+    else
+    {
+        print colored(['bold red'], "Can not parse R output ?! Abort.\n");
+        exit;
+    }
+
+
+    #
+    #
+    # Get the table with segments
+    #
+    #
+
+    if ( $output =~ /\s+var\n((.*\s*)+)\nParameters:\s/ )
+    {
+        $table = $1;
+    }
+    else
+    {
+        print colored(['bold red'], "Can not parse R output ?! Abort.\n");
+        exit;
+    }
+
+    $maxlen = 0;
+    while( $table =~ /\s*\d+\s+\d+\s+\d+\s+(\d+)\s+(\d+)\s+(\S+)\s+(\S+).*/ )
+    {
+        if ( $2-$1 > $maxlen )
+        {
+            $lim1 = $1;
+            $lim2 = $2;
+            $intercept = $3;
+            $slope = $4;
+            $maxlen = $2-$1;
+        }
+        $table = $';
+    }
+
+}
+
+
+
+
+
 if ( ($slope / $intercept) > 0.0010 )
 {
     $STEP = $lim2;
@@ -312,7 +437,7 @@ open(FOUT,"> Rscript.R") or die "Can not open Rscript.R for writing. Abort.\n";
 print FOUT <<EOT;
 testdata <- read.table("GT_results.dat")
 plot.ts( testdata\$V1, testdata\$V2, plot.type="single", xlab="RMSD in Angstrom", ylab="Probability", pch=".")
-smoothingSpline = smooth.spline(testdata\$V1, testdata\$V2, spar=0.5)
+smoothingSpline = smooth.spline(testdata\$V1, testdata\$V2, spar=0.8)
 plot.ts( testdata\$V1, testdata\$V2, plot.type="single", xlab="RMSD in Angstrom", ylab="Probability", pch=".")
 lines(smoothingSpline, col='red', lwd=4)
 EOT
