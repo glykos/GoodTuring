@@ -114,7 +114,7 @@ if ( -f "diagonals.dat" )
 else
 {
     `rm -rf diagonals.dat ; touch diagonals.dat`;
-    print colored(['bold ansi208'], "Calculating superdiagonals : ");
+    print colored(['bold ansi208'], "Computing superdiagonals : ");
     for ( $first = 1 ; $first < 400 ; $first += 20 )
     {
         print ".";
@@ -133,7 +133,7 @@ else
 
     `tail -n +2 diagonals.dat > .inter.dat ; mv .inter.dat diagonals.dat ; rm -rf carma.RMSD.superdiagonals`;
     
-    print "............. Done.\n";
+    print "............... Done.\n";
 }
 
 
@@ -381,6 +381,10 @@ else
 
 $STEP *= 400;
 
+if ( $STEP < 800 )
+{
+    $STEP = 800;
+}
 
 print color('bold ansi208');
 print "Determine STEP size ....................................... ";
