@@ -86,21 +86,31 @@ else
         print colored(['bold red'], "Can not determine number of frames ?!? Is carma installed ? Abort.\n");
         exit;
     }
-if ( $nof_frames < 200000 )
+
+print "\nTrajectory contains $nof_frames frames.\n";
+
+if ( $nof_frames < 100000 )
 {
-    print colored(['bold yellow'], "\nOnly $nof_frames frames found in the trajectory ?! Be sceptical ...\n");
+    print colored(['bold red'], "\nCowardly refusing to attempt any sort of analysis with only $nof_frames frames.\n");
+    print colored(['bold red'], "If you insist on performing a meaningless analysis, edit the source code.\n\n");
+    exit;
 }
-else
+elsif ( $nof_frames < 150000 )
 {
-    print "\nTrajectory contains $nof_frames frames.\n";
+    print colored(['bold red'], "\nWith only $nof_frames frames in the trajectory artifacts **will** appear.\n\n");
 }
+elsif ( $nof_frames < 200000 )
+{
+    print colored(['bold yellow'], "\nOnly $nof_frames frames found in the trajectory ?! Be sceptical ...\n\n");
+}
+
 
 
 
 #
 # Prepare the maxima of successive superdiagonals for 
 # different values of "-first". 
-#       ▶ The "-step" is fixed to 400 (for now).
+#       ▶ The "-step" is fixed to 800 (for now).
 #       ▶ The number of superdiagonals is fixed to 150 (for now). 
 #
 
@@ -115,11 +125,11 @@ else
 {
     `rm -rf diagonals.dat ; touch diagonals.dat`;
     print colored(['bold ansi208'], "Computing superdiagonals : ");
-    for ( $first = 1 ; $first < 400 ; $first += 20 )
+    for ( $first = 1 ; $first < 800 ; $first += 40 )
     {
         print ".";
 
-        `carma -fit -cross -mm -diag 150 -first $first -step 400 $DCD $PSF`;
+        `carma -fit -cross -mm -diag 150 -first $first -step 800 $DCD $PSF`;
 
         `rm -rf .inter.dat`;
         
@@ -151,11 +161,11 @@ library(dpseg)
 library(minpack.lm)
 testdata <- read.table("diagonals.dat")
 color<-rainbow(ncol(testdata))
-plot.ts( testdata, plot.type="single",col=color, xlab="Superdiagonals (in steps of 400 structures)", ylab="max RMSDs")
+plot.ts( testdata, plot.type="single",col=color, xlab="Superdiagonals (in steps of 800 structures)", ylab="max RMSDs")
 x <- 1:nrow(testdata)
 y <- rowMeans( testdata )
 dy <- apply(X = testdata, MARGIN = 1, FUN = sd)
-plot( x, y, col='red', xlab="Superdiagonals (in steps of 400 structures)", ylab="Mean & standard deviation of RMSDs")
+plot( x, y, col='red', xlab="Superdiagonals (in steps of 800 structures)", ylab="Mean & standard deviation of RMSDs")
 arrows(x,y-dy,x,y+dy, code=3, col='gray50', length=0.02, angle = 90)
 
 fit_nls <- nlsLM(y ~ I(x + a2) * I((1 + abs((x + a2) / a0) ^ a1)^(-1/a1)),
@@ -172,7 +182,7 @@ lines( new_df, lwd = 4 )
 
 segs <- dpseg(x = x, y = y, minl = 3, jumps = TRUE, P=0.00020 )
 segs
-plot( segs, main="Segments identified", xlab="Superdiagonals (in steps of 400 structures)", ylab="RMSDs")
+plot( segs, main="Segments identified", xlab="Superdiagonals (in steps of 800 structures)", ylab="RMSDs")
 EOT
 
 close( FOUT );  
@@ -256,7 +266,7 @@ while( $table =~ /\s*\d+\s+\d+\s+\d+\s+(\d+)\s+(\d+)\s+(\S+)\s+(\S+).*/ )
 
 
 
-if ( $maxlen > 140 )
+if ( $maxlen > 145 )
 {
 
     print colored(['bold ansi33'], "Segmentation is questionable. Re-running R .................... Done\n");
@@ -270,11 +280,11 @@ library(dpseg)
 library(minpack.lm)
 testdata <- read.table("diagonals.dat")
 color<-rainbow(ncol(testdata))
-plot.ts( testdata, plot.type="single",col=color, xlab="Superdiagonals (in steps of 400 structures)", ylab="max RMSDs")
+plot.ts( testdata, plot.type="single",col=color, xlab="Superdiagonals (in steps of 800 structures)", ylab="max RMSDs")
 x <- 1:nrow(testdata)
 y <- rowMeans( testdata )
 dy <- apply(X = testdata, MARGIN = 1, FUN = sd)
-plot( x, y, col='red', xlab="Superdiagonals (in steps of 400 structures)", ylab="Mean & standard deviation of RMSDs")
+plot( x, y, col='red', xlab="Superdiagonals (in steps of 800 structures)", ylab="Mean & standard deviation of RMSDs")
 arrows(x,y-dy,x,y+dy, code=3, col='gray50', length=0.02, angle = 90)
 
 fit_nls <- nlsLM(y ~ I(x + a2) * I((1 + abs((x + a2) / a0) ^ a1)^(-1/a1)),
@@ -291,7 +301,7 @@ lines( new_df, lwd = 4 )
 
 segs <- dpseg(x = x, y = y, minl = 3, maxl=50, jumps = TRUE, P=0.00020 )
 segs
-plot( segs, main="Segments identified", xlab="Superdiagonals (in steps of 400 structures)", ylab="RMSDs")
+plot( segs, main="Segments identified", xlab="Superdiagonals (in steps of 800 structures)", ylab="RMSDs")
 EOT
 
     close( FOUT );  
@@ -379,11 +389,11 @@ else
     $STEP = $lim1;
 }
 
-$STEP *= 400;
+$STEP *= 800;
 
-if ( $STEP < 800 )
+if ( $STEP < 1600 )
 {
-    $STEP = 800;
+    $STEP = 1600;
 }
 
 print color('bold ansi208');
@@ -403,18 +413,22 @@ print color('reset');
 print color('bold ansi208');
 print "Good Turing : ";
 `rm -rf .out.dat`;
-$pr = 1;
-for ( $first = 1 ; $first < $STEP ; $first += $STEP/80 )
+$pr = 0;
+if ( $STEP > 10000 )
+    {
+        $fine = 160;
+    }
+else
+    {
+        $fine = 80;
+    }
+for ( $first = 1 ; $first < $STEP ; $first += $STEP/ $fine )
 {
-    if ( $pr == 1 )
+    if ( $pr % int($fine/40+0.1) == 0 )
         {
             print ".";
-            $pr = 0;
         }
-    else
-        {
-            $pr = 1;
-        }
+    $pr++;
 
     `carma -v -fit -cross -mm -first $first -step $STEP $DCD $PSF`;
 
