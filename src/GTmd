@@ -31,7 +31,17 @@ $time0 = time();
 # Arguments and sanity checks
 #
 
-( @ARGV == 2 ) or die "Usage : GT_new <DCD> <PSF>\n";
+( @ARGV == 2 || @ARGV == 3 ) or die "Usage : GT_new <DCD> <PSF> [STEP]\n";
+
+$USERSTEP = -1;
+if ( @ARGV == 3 )
+    {
+        $USERSTEP = int( $ARGV[2]) ;
+        if ( $USERSTEP < 1 )
+            {
+                die "Usage : GT_new <DCD> <PSF> [STEP]\n";
+            }
+    }
 
 if ( $ARGV[0] =~ /\.psf/ && $ARGV[1] =~ /\.dcd/ )
     {
@@ -105,6 +115,11 @@ elsif ( $nof_frames < 200000 )
 }
 
 
+if ( $USERSTEP > 0 )
+    {
+        $STEP = $USERSTEP;
+        goto RUN_GT;
+    }
 
 
 #
@@ -395,6 +410,10 @@ if ( $STEP < 1600 )
 {
     $STEP = 1600;
 }
+
+
+
+RUN_GT:
 
 print color('bold ansi208');
 print "Determine STEP size ....................................... ";
