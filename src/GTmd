@@ -151,9 +151,9 @@ if ( $USERSTEP > 0 )
 
 if ( -f "diagonals.dat" )
 {
-    print colored(['bold bright_yellow'], "____________________________________________________________________\n\n");
+    print colored(['bold bright_yellow'], "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
     print colored(['bold bright_yellow'], "  Beware : File diagonals.dat already present. We will re-use it!   \n");
-    print colored(['bold bright_yellow'], "____________________________________________________________________\n\n");
+    print colored(['bold bright_yellow'], "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n");
     sleep( 2 );
 }
 else
@@ -257,7 +257,9 @@ if ( $output =~ /\na3\s+(\S+)\s/ )
     }
     else
     {
+        print colored(['bold red'], "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
         print colored(['bold red'], "Check convergence : ................................... Questionable\n");
+        print colored(['bold red'], "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n");
     }
 }
 else
@@ -369,7 +371,9 @@ EOT
         }
         else
         {
+            print colored(['bold red'], "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
             print colored(['bold red'], "Check convergence : ................................... Questionable\n");
+            print colored(['bold red'], "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n");
         }
     }
     else
