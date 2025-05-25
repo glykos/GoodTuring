@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/perl -w
 
 ###############################################################################
 #
@@ -31,7 +31,7 @@ $time0 = time();
 # Arguments and sanity checks
 #
 
-( @ARGV == 2 || @ARGV == 3 ) or die "Usage : GT_new <DCD> <PSF> [STEP]\n";
+( @ARGV == 2 || @ARGV == 3 ) or die "Usage : GTmd <DCD> <PSF> [STEP]\n";
 
 $USERSTEP = -1;
 if ( @ARGV == 3 )
@@ -39,7 +39,7 @@ if ( @ARGV == 3 )
         $USERSTEP = int( $ARGV[2]) ;
         if ( $USERSTEP < 1 )
             {
-                die "Usage : GT_new <DCD> <PSF> [STEP]\n";
+                die "Usage : GTmd <DCD> <PSF> [STEP]\n";
             }
     }
 
@@ -55,7 +55,7 @@ elsif ( $ARGV[0] =~ /\.dcd/ && $ARGV[1] =~ /\.psf/ )
     }
 else
     {
-        print colored(['bold red'], "Usage : GT_new <DCD> <PSF>\n");
+        print colored(['bold red'], "Usage : GTmd <DCD> <PSF>\n");
         exit;
     }
 
