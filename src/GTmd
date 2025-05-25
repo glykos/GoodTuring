@@ -78,6 +78,26 @@ if ( $log !~ /carma v\.2\.5/ )
         exit;
     }
 
+$log = `Rscript 2>&1`;
+if ( $log !~ /Usage: / )
+    {
+        print colored(['bold red'], "\nRscript not present ? Abort.\n\n");
+        exit;
+    }
+
+open(FOUT,"> Rscript.R") or die "Can not open Rscript.R for writing. Abort.\n";
+print FOUT <<EOT;
+library(dpseg)
+library(minpack.lm)
+EOT
+close( FOUT );  
+$output = `Rscript Rscript.R 2>&1`;
+if ( $output =~ /Error/ )
+    {
+        print colored(['bold red'], "\nR libraries 'dpseg' and 'minpack.lm' not installed ? Abort.\n\n");
+        exit;
+    }
+`rm -rf Rscript.R`;
 
 
 
