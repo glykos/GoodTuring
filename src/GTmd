@@ -107,6 +107,11 @@ if ( $output =~ /Error/ )
 
 $log = `carma -v -last 1 $DCD $PSF`;
 `rm -rf *.0000001.ps`;
+if ( $log =~ /do not match/ )
+    {
+        print colored(['bold red'], "Unmatched DCD/PSF pair ? Abort.\n");
+        exit;
+    }
 if ( $log =~ /Number of coordinate sets is (\d+)/ )
     {
         $nof_frames = $1;
