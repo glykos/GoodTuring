@@ -10,3 +10,9 @@ The initial part of script calculates successive superdiagonals of the matrix wh
 
 ## Requirements
 To use this program, you'll need a molecular dynamics trajectory (only DCD+PSF supported), the latest version of the program 'carma' from https://utopia.duth.gr/glykos/progs/ and the R package for statistical computing with the dpseg & minpack.lm libraries installed. And, of course, a linux machine.
+
+## usage
+```
+chmod 755 GTmd
+./GTmd <My_DCD_file> <My_PSF_file>
+```
