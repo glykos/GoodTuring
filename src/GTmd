@@ -101,11 +101,28 @@ if ( $output =~ /Error/ )
 
 
 
+
+#
+# Carma flags from environment
+#
+
+if ( defined( $ENV{CARMAFLAGS} ) )
+    {   
+        $flags = $ENV{CARMAFLAGS};
+    }
+else
+    {
+        $flags = "";
+    }
+
+
+
+
 #
 # Get number of frames in the trajectory 
 #
 
-$log = `carma -v -last 1 $DCD $PSF`;
+$log = `carma -v $flags -last 1 $DCD $PSF`;
 `rm -rf *.0000001.ps`;
 if ( $log =~ /do not match/ )
     {
@@ -118,6 +135,12 @@ if ( $log =~ /Number of coordinate sets is (\d+)/ )
     }
 else
     {
+        if ( $flags ne "" )
+        {
+            print colored(['bold red'], "Can not determine number of frames ?!?\nIs carma installed ?? Wrong carma flags ?? Abort.\n");
+            print colored(['bold ansi208'], "Flags for carma from the environment (CARMAFLAGS) are : $flags\n");
+            exit;
+        }
         print colored(['bold red'], "Can not determine number of frames ?!? Is carma installed ? Abort.\n");
         exit;
     }
@@ -140,11 +163,30 @@ elsif ( $nof_frames < 200000 )
 }
 
 
+
+if ( defined( $ENV{CARMAFLAGS} ) )
+    {   
+        print colored(['bold ansi46'], "Flags for carma defined : $flags\n"); 
+    }
+else
+    {
+        print colored(['bold ansi46'], "Environmental variable CARMAFLAGS undefined.  Will use all CA atoms.\n");
+    }
+
+
+
+
+#
+# Skip superdiagonal calculation if STEP is defined
+#
+
 if ( $USERSTEP > 0 )
     {
         $STEP = $USERSTEP;
         goto RUN_GT;
     }
+
+
 
 
 #
@@ -169,7 +211,7 @@ else
     {
         print ".";
 
-        `carma -fit -cross -mm -diag 150 -first $first -step 800 $DCD $PSF`;
+        `carma -fit -cross $flags -mm -diag 150 -first $first -step 800 $DCD $PSF`;
 
         `rm -rf .inter.dat`;
         
@@ -478,7 +520,7 @@ for ( $first = 1 ; $first < $STEP ; $first += $STEP/ $fine )
         }
     $pr++;
 
-    `carma -v -fit -cross -mm -first $first -step $STEP $DCD $PSF`;
+    `carma -fit -cross -mm $flags -first $first -step $STEP $DCD $PSF`;
 
     
     $lines = `wc -l < carma.RMSD.mins`;
