@@ -211,11 +211,11 @@ else
     {
         print ".";
 
-        `carma -fit -cross $flags -mm -diag 150 -first $first -step 800 $DCD $PSF`;
+        `carma -fit -cross $flags -mm -diag 300 -first $first -step 800 $DCD $PSF`;
 
         `rm -rf .inter.dat`;
         
-        for ( $diag = 1 ; $diag <= 150 ; $diag++ )
+        for ( $diag = 1 ; $diag <= 300 ; $diag++ )
         {
             `awk '{print \$'$diag'}' carma.RMSD.superdiagonals | sort -n | tail -1 >> .inter.dat`;
         }
@@ -350,7 +350,7 @@ while( $table =~ /\s*\d+\s+\d+\s+\d+\s+(\d+)\s+(\d+)\s+(\S+)\s+(\S+).*/ )
 
 
 
-if ( $maxlen > 145 )
+if ( $maxlen > 295 )
 {
 
     print colored(['bold ansi33'], "Segmentation is questionable. Re-running R .................... Done\n");
@@ -383,7 +383,7 @@ summary( fit_nls )
 new_df = predict(fit_nls, testdata)
 lines( new_df, lwd = 4 )
 
-segs <- dpseg(x = x, y = y, minl = 3, maxl=50, jumps = TRUE, P=0.00020 )
+segs <- dpseg(x = x, y = y, minl = 3, maxl=150, jumps = TRUE, P=0.00020 )
 segs
 plot( segs, main="Segments identified", xlab="Superdiagonals (in steps of 800 structures)", ylab="RMSDs")
 EOT
@@ -464,9 +464,7 @@ EOT
 
 
 
-
-
-if ( ($slope / $intercept) > 0.0010 )
+if ( ($slope / $intercept) > 0.000150 )
 {
     $STEP = $lim2;
 }
@@ -544,10 +542,10 @@ open(FOUT,"> Rscript.R") or die "Can not open Rscript.R for writing. Abort.\n";
 
 print FOUT <<EOT;
 testdata <- read.table("GT_results.dat")
-plot.ts( testdata\$V1, testdata\$V2, plot.type="single", xlab="RMSD in Angstrom", ylab="Probability", pch=".")
+plot.ts( testdata\$V1, testdata\$V2, plot.type="single", col='orange', xlab="RMSD in Angstrom", ylab="Probability", pch=".")
 smoothingSpline = smooth.spline(testdata\$V1, testdata\$V2, spar=0.8)
-plot.ts( testdata\$V1, testdata\$V2, plot.type="single", xlab="RMSD in Angstrom", ylab="Probability", pch=".")
-lines(smoothingSpline, col='red', lwd=4)
+plot.ts( testdata\$V1, testdata\$V2, plot.type="single", col='orange', xlab="RMSD in Angstrom", ylab="Probability", pch=".")
+lines(smoothingSpline, col='black', lwd=4)
 EOT
 
 close( FOUT );  
