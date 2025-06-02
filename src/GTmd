@@ -262,6 +262,14 @@ summary( fit_nls )
 new_df = predict(fit_nls, testdata)
 lines( new_df, lwd = 4 )
 
+# if ( coef(fit_nls)[4] > 1.0 ) 
+# {
+    max_y <- max(new_df)
+    index_of_max <- which(y > max_y)
+    x_at_max <- x[index_of_max[1]]
+    print(paste("First value greater than a0 at ", x_at_max))
+# }
+
 segs <- dpseg(x = x, y = y, minl = 3, jumps = TRUE, P=0.00020 )
 segs
 plot( segs, main="Segments identified", xlab="Superdiagonals (in steps of 800 structures)", ylab="RMSDs")
@@ -348,121 +356,28 @@ while( $table =~ /\s*\d+\s+\d+\s+\d+\s+(\d+)\s+(\d+)\s+(\S+)\s+(\S+).*/ )
 
 
 
+#
+#
+# Get the step from nlsLM()
+#
+#
 
-
-if ( $maxlen > 295 )
+if ( $output =~ /First value greater than a0 at\s+(\d+)/ )
 {
-
-    print colored(['bold ansi33'], "Segmentation is questionable. Re-running R .................... Done\n");
-
-    `rm -rf Rscript.R`;
-
-    open(FOUT,"> Rscript.R") or die "Can not open Rscript.R for writing. Abort.\n";
-
-print FOUT <<EOT;
-library(dpseg)
-library(minpack.lm)
-testdata <- read.table("diagonals.dat")
-color<-rainbow(ncol(testdata))
-plot.ts( testdata, plot.type="single",col=color, xlab="Superdiagonals (in steps of 800 structures)", ylab="max RMSDs")
-x <- 1:nrow(testdata)
-y <- rowMeans( testdata )
-dy <- apply(X = testdata, MARGIN = 1, FUN = sd)
-plot( x, y, col='red', xlab="Superdiagonals (in steps of 800 structures)", ylab="Mean & standard deviation of RMSDs")
-arrows(x,y-dy,x,y+dy, code=3, col='gray50', length=0.02, angle = 90)
-
-fit_nls <- nlsLM(y ~ I(x + a2) * I((1 + abs((x + a2) / a0) ^ a1)^(-1/a1)),
-            control = nls.lm.control(ftol = 1e-10, ptol = 1e-10, maxiter=1000),
-            start=list(a0=1, a1=1, a2=1), weights=I(1 / (dy*dy) ))
-summary( fit_nls )
-
-fit_nls <- nlsLM(y ~ I(x + a2) * I((1 + abs((x + a2) / a0) ^ a1)^(-a3/a1)),
-            control = nls.lm.control(ftol = 1e-10, ptol = 1e-10, maxiter=1000),
-            start=list(a0=1, a1=1, a2=1, a3=1), weights=I(1 / (dy*dy) ))
-summary( fit_nls )
-new_df = predict(fit_nls, testdata)
-lines( new_df, lwd = 4 )
-
-segs <- dpseg(x = x, y = y, minl = 3, maxl=150, jumps = TRUE, P=0.00020 )
-segs
-plot( segs, main="Segments identified", xlab="Superdiagonals (in steps of 800 structures)", ylab="RMSDs")
-EOT
-
-    close( FOUT );  
-
-
-    #
-    # Run R
-    #
-
-    $output = `Rscript Rscript.R`;
-
-    `mv Rplots.pdf GT_sampling_2.pdf`;
-
-    #
-    #
-    # Start interpreting output ...
-    #
-    #
-
-    #
-    # Is the a3 parameter greater than 0.98 ?
-    #
-
-    if ( $output =~ /\na3\s+(\S+)\s/ )
-    {
-        $a3 = $1;
-        if ( $a3 > 0.980 )
-        {
-            print colored(['bold ansi208'], "Check convergence : ........................................... Pass\n");
-        }
-        else
-        {
-            print colored(['bold red'], "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
-            print colored(['bold red'], "Check convergence : ................................... Questionable\n");
-            print colored(['bold red'], "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n");
-        }
-    }
-    else
-    {
-        print colored(['bold red'], "Can not parse R output ?! Abort.\n");
-        exit;
-    }
-
-
-    #
-    #
-    # Get the table with segments
-    #
-    #
-
-    if ( $output =~ /\s+var\n((.*\s*)+)\nParameters:\s/ )
-    {
-        $table = $1;
-    }
-    else
-    {
-        print colored(['bold red'], "Can not parse R output ?! Abort.\n");
-        exit;
-    }
-
-    $maxlen = 0;
-    while( $table =~ /\s*\d+\s+\d+\s+\d+\s+(\d+)\s+(\d+)\s+(\S+)\s+(\S+).*/ )
-    {
-        if ( $2-$1 > $maxlen )
-        {
-            $lim1 = $1;
-            $lim2 = $2;
-            $intercept = $3;
-            $slope = $4;
-            $maxlen = $2-$1;
-        }
-        $table = $';
-    }
-
+    $STEP_A3 = $1;
+}
+else
+{   
+    $STEP_A3 = -1;
 }
 
 
+
+#
+#
+# STEP
+#
+#
 
 if ( ($slope / $intercept) > 0.000150 )
 {
@@ -472,6 +387,13 @@ else
 {
     $STEP = $lim1;
 }
+
+if ( $maxlen > 295 && $STEP_A3 > 0 )
+{
+    print colored(['bold ansi33'], "Segmentation is questionable. Will use nlsLM parameters ....... Done\n");
+    $STEP = $STEP_A3;
+}
+
 
 $STEP *= 800;
 
@@ -531,6 +453,9 @@ for ( $first = 1 ; $first < $STEP ; $first += $STEP/ $fine )
 `mv .out.dat GT_results.dat`;
 `rm carma.RMSD.mins`;
 
+$double = `sort -n -k1 GT_results.dat | tail -1 | awk '{print \$1}'`;
+chomp( $double );
+
 print "......... Done\n";
 print color('reset');
 
@@ -559,6 +484,25 @@ close( FOUT );
 $output = `Rscript Rscript.R`;
 `mv Rplots.pdf GT_results.pdf`;
 `rm Rscript.R`;
+
+
+#
+# Max expected RMSD upon doubling the simulation time 
+#
+
+print colored(['bold ansi208'], "\nQuick summary : If you double the simulation time,  the most distant\n");
+print colored(['bold ansi208'], "                structure you  will  observe  may  differ  (from the\n");
+print colored(['bold ansi208'], "                structures already observed) by as much as $double Å.\n");
+
+
+if ( $USERSTEP < 0 && $a3 <= 0.980 && $maxlen > 295 && $STEP_A3 < 0)
+{
+    print colored(['bold red'], "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+    print colored(['bold red'], "Warning :       This trajectory appears to be actively evolving.    \n");
+    print colored(['bold red'], "             Application of Good-Turing statistics is questionable. \n");
+    print colored(['bold red'], "                                 Be sceptical.                      \n");
+    print colored(['bold red'], "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+}
 
 $time1 = time();
 $dt = ($time1-$time0) / 60.0;
