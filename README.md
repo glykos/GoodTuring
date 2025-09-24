@@ -9,7 +9,11 @@ It attempts to bypass the significant memory limitations of the original algorit
 The initial part of script calculates successive superdiagonals of the matrix which then uses to estimate the sampling step needed to obtain 'independent' (ie. not mechanistically correlated) structures. The treatment is essentialy identical with the originally reported procedure.
 
 ## Requirements
-To use this program, you'll need a molecular dynamics trajectory (only DCD+PSF supported), the latest version of the program 'carma' from https://utopia.duth.gr/glykos/progs/ and the R package for statistical computing with the dpseg & minpack.lm libraries installed. And, of course, a linux machine.
+To use this program, you'll need
+- A molecular dynamics trajectory (only DCD+PSF supported).
+- The latest version of the program 'carma' from https://utopia.duth.gr/glykos/progs/ (or from the ``bin/`` subdirectory of this repository).
+- The R package for statistical computing _with the dpseg & minpack.lm libraries installed_.
+- A Linux machine.
 
 ## Usage
 ```
